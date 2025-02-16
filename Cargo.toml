@@ -2,5 +2,18 @@
 name = "haltic"
 version = "0.1.0"
 edition = "2021"
+description = "A crate for cancellable services"
+readme = "README.md"
+
+homepage = "https://github.com/jbgriesner/haltic"
+repository = "https://github.com/jbgriesner/haltic.git"
+
+categories = ["service", "cancel"]
+keywords = ["network-programming", "rust-patterns"]
+
+license = "MIT/Apache-2.0"
+
+[badges]
+travis-ci = {repository = "jbgriesner/haltic"}
 
 [dependencies]

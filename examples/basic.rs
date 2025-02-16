@@ -24,10 +24,8 @@ impl Service {
 
 fn main() {
     let mut s = Service::new();
-    eprintln!("service started!");
-    // s.run().unwrap();
-
     let h = s.spawn();
+    eprintln!("service started!");
 
     let exit = h.canceller();
 
