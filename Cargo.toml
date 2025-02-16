@@ -8,7 +8,7 @@ readme = "README.md"
 homepage = "https://github.com/jbgriesner/haltic"
 repository = "https://github.com/jbgriesner/haltic.git"
 
-categories = ["service", "cancel"]
+categories = []
 keywords = ["network-programming", "rust-patterns"]
 
 license = "MIT/Apache-2.0"
