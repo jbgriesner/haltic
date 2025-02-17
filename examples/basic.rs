@@ -25,15 +25,15 @@ impl Service {
 fn main() {
     let mut s = Service::new();
     let h = s.spawn();
-    eprintln!("service started!");
+    let h2 = h.clone();
 
-    let exit = h.canceller();
+    eprintln!("service started!");
 
     thread::spawn(move || {
         thread::sleep(time::Duration::from_secs(10));
         eprintln!("service terminating!");
 
-        exit.cancel();
+        h2.cancel();
     });
     h.wait().unwrap();
     eprintln!("service terminated!");
