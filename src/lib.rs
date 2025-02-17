@@ -91,11 +91,6 @@ impl Canceller {
 }
 
 impl<E> Handle<E> {
-    /// Get a canceller: another handle for cancelling the service loop
-    pub fn canceller(&self) -> Canceller {
-        self.canceller.clone()
-    }
-
     /// Wait for the service loop to exit and return its result
     pub fn wait(self) -> Result<(), E> {
         match self.executor.join() {
@@ -104,5 +99,90 @@ impl<E> Handle<E> {
                 panic!("{:?}", e)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::{TcpListener, TcpStream};
+    use std::{io, net, thread};
+
+    struct Service(net::TcpListener);
+
+    impl Cancellable for Service {
+        type Error = io::Error;
+        fn for_each(&mut self) -> Result<LoopState, Self::Error> {
+            let mut stream = match self.0.accept() {
+                Ok((stream, _)) => stream,
+                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {
+                    return Ok(LoopState::Continue)
+                }
+                Err(e) => return Err(e),
+            };
+            write!(stream, "hello!")?;
+            Ok(LoopState::Continue)
+        }
+    }
+
+    impl Service {
+        fn new() -> Self {
+            Service(TcpListener::bind("127.0.0.1:0").unwrap())
+        }
+
+        fn port(&self) -> u16 {
+            self.0.local_addr().unwrap().port()
+        }
+    }
+
+    fn connect_assert(port: u16) -> Option<io::Error> {
+        match TcpStream::connect(("127.0.0.1", port)) {
+            Ok(mut c) => {
+                let mut r = String::new();
+                if let Err(e) = c.read_to_string(&mut r) {
+                    return Some(e);
+                }
+                assert_eq!(r, "hello!");
+                None
+            }
+            Err(e) => Some(e),
+        }
+    }
+
+    #[test]
+    fn it_runs() {
+        let mut s = Service::new();
+        let port = s.port();
+        thread::spawn(move || {
+            s.run().unwrap();
+        });
+
+        assert!(connect_assert(port).is_none());
+        assert!(connect_assert(port).is_none());
+    }
+
+    #[test]
+    fn it_cancels() {
+        let s = Service::new();
+        let port = s.port();
+        let h = s.spawn();
+
+        assert!(connect_assert(port).is_none());
+        assert!(connect_assert(port).is_none());
+
+        h.cancel();
+
+        let mut succeeded = 0;
+        // cancel will ensure that for_each is not call *again*
+        // it will *not* terminate the currently running for_each
+        // note that it *may* terminate early if accept() gets interrupted
+        while connect_assert(port).is_none() {
+            succeeded += 1;
+            assert!(succeeded <= 1);
+        }
+
+        // instead of calling for_each again, the loop should now have exited
+        h.wait().unwrap();
     }
 }
